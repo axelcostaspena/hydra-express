@@ -32,9 +32,11 @@ const cors = require('cors');
 const express = require('express');
 const helmet = require('helmet');
 const http = require('http');
+const https = require('https');
 const moment = require('moment');
 const path = require('path');
 const responseTime = require('response-time');
+const fs = require('fs');
 
 let app = express();
 
@@ -152,11 +154,31 @@ class HydraExpress {
       config.hydra.servicePort = config.hydra.servicePort || 0;
       config.hydra.serviceType = config.hydra.serviceType || '';
 
+      if (config.hydra.ssl && config.hydra.ssl.enabled) {
+        config.hydra.ssl.enabled = true;
+        let readFilesCallback = () => {
+          if (typeof config.hydra.ssl.key != "undefined" && typeof config.hydra.ssl.cert != "undefined") {
+            resolve();
+          }
+        }
+        fs.readFile(config.hydra.ssl.keyFile, function (err, data) {
+          config.hydra.ssl.key = err ? false : data.toString();
+          readFilesCallback();
+        });
+        fs.readFile(config.hydra.ssl.certFile, function (err, data) {
+          config.hydra.ssl.cert = err ? false : data.toString();
+          readFilesCallback();
+        });
+      } else {
+        config.hydra.ssl.enabled = false;
+        resolve();
+      }
+    }).then(() => {
       let missingFields = this.validateConfig(config);
       if (missingFields.length) {
-        reject(new Error(`Config missing fields: ${missingFields.join(' ')}`));
+        Promise.reject(new Error(`Config missing fields: ${missingFields.join(' ')}`));
       } else if (!config.registerRoutesCallback) {
-        reject(new Error('Config missing registerRoutesCallback parameter'));
+        Promise.reject(new Error('Config missing registerRoutesCallback parameter'));
       } else {
         config.hydra.serviceVersion = config.version;
         this.config = config;
@@ -180,7 +202,9 @@ class HydraExpress {
           this.log(entry.type, entry.message);
         });
 
-        return this.start(resolve, reject);
+        return new Promise((resolve, reject) => {
+          return this.start(resolve, reject);
+        });
       }
     });
   }
@@ -414,7 +438,16 @@ class HydraExpress {
 
     app.set('port', this.config.servicePort);
 
-    this.server = http.createServer(app);
+    if (this.config.hydra.ssl.enabled) {
+      console.log("https");
+      this.server = https.createServer({
+        key: this.config.hydra.ssl.key,
+        cert: this.config.hydra.ssl.cert,
+        passphrase: this.config.hydra.ssl.keyFilePassphrase,
+      }, app);
+    } else {
+      this.server = http.createServer(app);
+    }
 
     /**
      * @param {object} error - error object
