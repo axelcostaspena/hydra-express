@@ -235,6 +235,12 @@ exports.value = {
     redis: {
       url: '127.0.0.1',
       port: 6379
+    },
+    ssl: {
+      enabled: false,
+      keyFile: 'key.pem',
+      certFile: 'cert.pem',
+      keyFilePassphrase: 'abc123.,'
     }
   }
 };
@@ -257,6 +263,10 @@ hydra.serviceIP | The IP address to use with the service. If the value is equal 
 hydra.servicePort | The port address the service should use. If set to zero then a random port will be selected.
 hydra.serviceType | The service class. For example: "social" for all services relating to social.
 hydra.redis | The settings for the Redis server which hydra should use.
+hydra.ssl.enabled | If true, Express will be run under an https service. Omitting the whole ssl object equals to setting this to false.
+hydra.ssl.keyFile | The service relative path to an SSL key file.
+hydra.ssl.certFile | The service relative path to an SSL certificate file.
+hydra.ssl.keyFilePassphrase | The SSL key file cypher passphrase.
 
 ## Tests
 
